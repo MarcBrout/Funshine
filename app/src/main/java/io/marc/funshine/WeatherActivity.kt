@@ -1,16 +1,17 @@
 package io.marc.funshine
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
 import android.util.Log
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import com.google.android.gms.location.LocationServices
 import org.json.JSONObject
 
 class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback {
@@ -68,23 +69,27 @@ class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissions
         }
     }
 
-    fun downloadWeatherData() {
-        val query = Query.Builder()
-                .setLat(9.968782)
-                .setLong(76.299076)
-                .setTemperatureUnits(Query.TemperatureUnits.CELSIUS)
-                .build()
+    @SuppressLint("MissingPermission")
+    private fun downloadWeatherData() {
+        LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener { location ->
+            val query = Query.Builder()
+                    .setLat(location.latitude)
+                    .setLong(location.longitude)
+                    .setTemperatureUnits(Query.TemperatureUnits.CELSIUS)
+                    .build()
 
-        Log.d("FUNSHINE", query.getUrl())
+            Log.d("FUNSHINE", query.getUrl())
 
-        val jsonObjReq = JsonObjectRequest(Request.Method.GET, query.getUrl(), null,
-                Response.Listener<JSONObject> { response ->
-                    Log.d("FUNSHINE", "Res: $response")
-                },
-                Response.ErrorListener { error ->
-                    Log.d("FUNSHINE", "Err: ${error.localizedMessage}")
-                })
-        //Volley.newRequestQueue(this).add(jsonObjReq)
+            val jsonObjReq = JsonObjectRequest(Request.Method.GET, query.getUrl(), null,
+                    Response.Listener<JSONObject> { response ->
+                        Log.d("FUNSHINE", "Res: $response")
+                        //update recycler view
+                    },
+                    Response.ErrorListener { error ->
+                        Log.d("FUNSHINE", "Err: ${error.localizedMessage}")
+                    })
+            Volley.newRequestQueue(this).add(jsonObjReq)
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -106,15 +111,12 @@ class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissions
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_weather)
 
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION_CODE)
         } else {
             downloadWeatherData()
         }
-
-
     }
-
-
 }
