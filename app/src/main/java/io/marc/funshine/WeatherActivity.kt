@@ -11,11 +11,23 @@ import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import io.marc.funshine.Model.City
+import io.marc.funshine.Model.Prevision
+import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 
-class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback {
+class WeatherActivity : AppCompatActivity(),
+        ActivityCompat.OnRequestPermissionsResultCallback
+{
+    private val NORMAL_INTERVAL: Long = 600000
+    private val DEBUG_INTERVAL: Long = 1000
     private val REQUEST_LOCATION_CODE = 0
+    private lateinit var locationCallback: LocationCallback
 
     companion object {
         val API_KEY = "cbbf72c957ceaf9547eb3525a04c1066"
@@ -70,25 +82,54 @@ class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissions
     }
 
     @SuppressLint("MissingPermission")
-    private fun downloadWeatherData() {
+    private fun activateLocationServices() {
+        val locationRequest = LocationRequest.create()
+
+        locationRequest.priority = LocationRequest.PRIORITY_LOW_POWER
+
+        LocationServices.getFusedLocationProviderClient(this).requestLocationUpdates(locationRequest, locationCallback, null)
+        sendWeatherRequest()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun sendWeatherRequest() {
         LocationServices.getFusedLocationProviderClient(this).lastLocation.addOnSuccessListener { location ->
-            val query = Query.Builder()
-                    .setLat(location.latitude)
-                    .setLong(location.longitude)
-                    .setTemperatureUnits(Query.TemperatureUnits.CELSIUS)
-                    .build()
+            if (location != null) {
+                // Building the weather request query
+                val query = Query.Builder()
+                        .setLat(location.latitude)
+                        .setLong(location.longitude)
+                        .setTemperatureUnits(Query.TemperatureUnits.CELSIUS)
+                        .build()
 
-            Log.d("FUNSHINE", query.getUrl())
+                Log.d("FUNSHINE", query.getUrl())
 
-            val jsonObjReq = JsonObjectRequest(Request.Method.GET, query.getUrl(), null,
-                    Response.Listener<JSONObject> { response ->
-                        Log.d("FUNSHINE", "Res: $response")
-                        //update recycler view
-                    },
-                    Response.ErrorListener { error ->
-                        Log.d("FUNSHINE", "Err: ${error.localizedMessage}")
-                    })
-            Volley.newRequestQueue(this).add(jsonObjReq)
+                // Setting up the HTTP request as a GET method
+                val jsonObjReq = JsonObjectRequest(Request.Method.GET, query.getUrl(), null,
+                        Response.Listener<JSONObject> { response ->
+                            Log.d("FUNSHINE", "Res: $response")
+
+                            try {
+                                val city = City(response.getJSONObject("city"))
+                                val list = response.getJSONArray("list")
+                                val count = response.getInt("cnt")
+                                val previsions = (0 until count).map { Prevision(list.getJSONObject(it)) }
+
+                                Log.d("FUNSHINE", "$city")
+                                //update recycler view
+
+
+                            } catch (e: JSONException) {
+                                Log.e("FUNSHINE", e.localizedMessage)
+                            }
+                        },
+                        Response.ErrorListener { error ->
+                            Log.d("FUNSHINE", "Err: ${error.localizedMessage}")
+                        })
+
+                // Processing the HTTP request
+                Volley.newRequestQueue(this).add(jsonObjReq)
+            }
         }
     }
 
@@ -98,7 +139,7 @@ class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissions
         when (requestCode) {
             REQUEST_LOCATION_CODE -> {
                 if (permissions.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    downloadWeatherData()
+                    activateLocationServices()
                 } else {
                     Log.v("FUNSHINE", "User refused access to map location")
                     finish()
@@ -111,12 +152,25 @@ class WeatherActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissions
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_weather)
 
+        locationCallback = object: LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                Log.d("FUNSHINE", "${locationResult.locations.last()}")
+            }
+        }
+    }
 
+    override fun onResume() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION_CODE)
         } else {
-            downloadWeatherData()
+            activateLocationServices()
         }
+        super.onResume()
+    }
+
+    override fun onStop() {
+        LocationServices.getFusedLocationProviderClient(this).removeLocationUpdates(locationCallback)
+        super.onStop()
     }
 }
