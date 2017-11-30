@@ -21,9 +21,9 @@ import io.marc.funshine.Adapters.WeatherAdapter
 import io.marc.funshine.Model.City
 import io.marc.funshine.Model.Prevision
 import kotlinx.android.synthetic.main.activity_weather.*
-import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.text.DateFormat
 
 class WeatherActivity : AppCompatActivity(),
         ActivityCompat.OnRequestPermissionsResultCallback
@@ -113,8 +113,6 @@ class WeatherActivity : AppCompatActivity(),
                 // Setting up the HTTP request as a GET method
                 val jsonObjReq = JsonObjectRequest(Request.Method.GET, query.getUrl(), null,
                         Response.Listener<JSONObject> { response ->
-                            Log.d("FUNSHINE", "Res: $response")
-
                             try {
                                 val city = City(response.getJSONObject("city"))
                                 val list = response.getJSONArray("list")
@@ -126,12 +124,20 @@ class WeatherActivity : AppCompatActivity(),
                                 // Updating main layout
                                 val firstPrevision = previsions.first()
 
+                                val formattedDate = DateFormat.getDateTimeInstance()
+                                        .format(firstPrevision.date)
+                                Log.d("FUNSHINE", "DATE = ${firstPrevision.date}")
+                                Log.d("FUNSHINE", "DATE = $formattedDate")
+
                                 main_date.text = firstPrevision.dateString
                                 main_city.text = city.full_desc
                                 main_weather_desc.text = firstPrevision.sky.description
                                 main_maxTemp.text = firstPrevision.temperature.max
                                 main_minTemp.text = firstPrevision.temperature.min
                                 main_logo.setImageResource(resources.getIdentifier(firstPrevision.sky.icon, null, packageName))
+
+                                // Remove first prevision
+                                previsions.removeAt(0)
 
                                 // Notify recycler view
                                 recycler.adapter.notifyDataSetChanged()
