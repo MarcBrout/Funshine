@@ -7,6 +7,8 @@ import org.json.JSONObject
  *  Created by Marc on 30/11/2017.
  */
 class City(val name: String, val country: String) {
+    val full_desc = "$name, $country"
+
     constructor(jsonObject: JSONObject) :
             this(jsonObject.getString("name"), jsonObject.getString("country"))
 

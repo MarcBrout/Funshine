@@ -18,6 +18,7 @@
                 android:id="@+id/card_weatherThumb"
                 android:layout_width="91dp"
                 android:layout_height="91dp"
+                android:padding="5dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"

@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
+import android.support.v7.widget.LinearLayoutManager
+import android.support.v7.widget.RecyclerView
 import android.util.Log
 import com.android.volley.Request
 import com.android.volley.Response
@@ -15,8 +17,10 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import io.marc.funshine.Adapters.WeatherAdapter
 import io.marc.funshine.Model.City
 import io.marc.funshine.Model.Prevision
+import kotlinx.android.synthetic.main.activity_weather.*
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -28,6 +32,8 @@ class WeatherActivity : AppCompatActivity(),
     private val DEBUG_INTERVAL: Long = 1000
     private val REQUEST_LOCATION_CODE = 0
     private lateinit var locationCallback: LocationCallback
+    private val previsions = arrayListOf<Prevision>()
+    private lateinit var recycler: RecyclerView
 
     companion object {
         val API_KEY = "cbbf72c957ceaf9547eb3525a04c1066"
@@ -113,11 +119,22 @@ class WeatherActivity : AppCompatActivity(),
                                 val city = City(response.getJSONObject("city"))
                                 val list = response.getJSONArray("list")
                                 val count = response.getInt("cnt")
-                                val previsions = (0 until count).map { Prevision(list.getJSONObject(it)) }
+                                (0 until count).mapTo(previsions) { Prevision(list.getJSONObject(it)) }
 
                                 Log.d("FUNSHINE", "$city")
-                                //update recycler view
 
+                                // Updating main layout
+                                val firstPrevision = previsions.first()
+
+                                main_date.text = firstPrevision.dateString
+                                main_city.text = city.full_desc
+                                main_weather_desc.text = firstPrevision.sky.description
+                                main_maxTemp.text = firstPrevision.temperature.max
+                                main_minTemp.text = firstPrevision.temperature.min
+                                main_logo.setImageResource(resources.getIdentifier(firstPrevision.sky.icon, null, packageName))
+
+                                // Notify recycler view
+                                recycler.adapter.notifyDataSetChanged()
 
                             } catch (e: JSONException) {
                                 Log.e("FUNSHINE", e.localizedMessage)
@@ -157,6 +174,12 @@ class WeatherActivity : AppCompatActivity(),
                 Log.d("FUNSHINE", "${locationResult.locations.last()}")
             }
         }
+
+        recycler = findViewById(R.id.main_previsions)
+        recycler.setHasFixedSize(true)
+
+        recycler.adapter = WeatherAdapter(previsions)
+        recycler.layoutManager = LinearLayoutManager(baseContext, LinearLayoutManager.VERTICAL, false)
     }
 
     override fun onResume() {
