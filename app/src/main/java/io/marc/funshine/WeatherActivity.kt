@@ -36,7 +36,7 @@ class WeatherActivity : AppCompatActivity(),
     private lateinit var recycler: RecyclerView
 
     companion object {
-        val API_KEY = "cbbf72c957ceaf9547eb3525a04c1066"
+        val API_KEY = "replace with key"
     }
 
     class Query private constructor(){
